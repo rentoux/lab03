@@ -87,7 +87,7 @@ df_clean <- df_clean %>%
   mutate(Date_Time_Column = as.Date(Date_Time_Column, format = "%Y-%m-%d"))
 
 df_clean <- df_clean %>%
-  mutate(Date_Time_Column = as.POSIXct(Date_Time_Column, format = "%Y-%m-%d %H:%M:%S"))
+  mutate(Date_Time_Column = as.POSIXct(Date_Time_Column, format = "%Y-%m-%d = %H:%M:%S"))
 
 # Convert a character column to a Date format
 df_clean <- df_clean %>%
@@ -152,3 +152,281 @@ df_clean <- df_clean %>%
 df_clean <- df_clean %>%
   mutate(Date_Time_Column = as.POSIXct(Date_Time_Column, format = "%Y-%m-%d %H:%M:%S"))
 
+# View summary statistics for the dataset
+summary(lab03)
+
+str(lab03$Edad)
+
+lab03 <- lab03 %>%
+  mutate(Edad = as.numeric(as.character(Edad)))
+
+sum(is.na(lab03$Edad))
+
+quantile(lab03$Edad, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+
+sum(is.na(lab03$Edad))
+
+lab03 <- lab03 %>%
+  mutate(Edad = ifelse(is.na(Edad), mean(Edad, na.rm = TRUE), Edad))
+
+lab03 <- lab03 %>%
+  filter(!is.na(Edad))
+
+# Identify potential outliers in specific columns
+quantile(lab03$Edad, probs = c(0.25, 0.5, 0.75))
+
+# Create a boxplot to identify outliers in the 'Edad' column
+boxplot(lab03$Edad, main = "Boxplot of Age", ylab = "Age")
+
+str(lab03$Edad)
+
+# Convert Edad to numeric
+lab03 <- lab03  %>%
+  mutate(Edad = as.numeric(as.character(Edad)))  # Convert to character first if it's a factor
+
+sum(is.na(lab03$Edad))  # Check for missing values
+ 
+
+# Create a boxplot to identify outliers in the 'Edad'
+boxplot(lab03$Edad, main = "Boxplot of Age", ylab = "Age")
+
+str(lab03$Total.Monthly.Household.Income)
+
+lab03 <- lab03 %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)))
+
+sum(is.na(lab03$`Total Monthly Household Income`))  # Check for missing values
+
+# Create a boxplot for the 'Total Monthly Household Income' column
+boxplot(lab03$Total.Monthly.Household.Income,
+        main = "Boxplot of Monthly Income", ylab = "Income")
+
+# Calculate Z-scores for 'Edad' column
+lab03 <- lab03 %>%
+  mutate(z_age = (Edad - mean(Edad, na.rm = TRUE)) /
+           sd(Edad, na.rm = TRUE))
+
+# Identify outliers based on Z-score
+lab03 %>%
+  filter(abs(z_age) > 3)
+
+# Calculate Q1 and Q3 for 'Edad'
+Q1 <- quantile(lab03$Edad, 0.25, na.rm = TRUE)
+
+Q3 <- quantile(lab03$Edad, 0.75, na.rm = TRUE)
+
+# Calculate IQR
+IQR <- Q3 - Q1
+
+# Calculate upper and lower bounds for identifying outliers
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Identify outliers
+df_outliers <- lab03 %>%
+  filter(Edad < lower_bound | Edad > upper_bound)
+
+# Remove outliers based on Z-scores
+df_clean <- lab03 %>%
+  filter(abs(z_age) <= 3) 
+
+# Alternatively, remove outliers based on IQR method
+df_clean <- lab03 %>%
+  filter(Edad >= lower_bound & Edad <= upper_bound)
+
+# Winsorize the 'Edad' column
+df_clean <- lab03 %>%
+  mutate(Edad = ifelse(Edad < lower_bound, lower_bound,
+                       ifelse(Edad > upper_bound, upper_bound, Edad)))
+
+# Apply a log transformation to reduce the impact of outliers
+# Adding 1 to avoid log(0)
+df_clean <- df_clean %>%
+  mutate(log_income = log(Total.Monthly.Household.Income + 1)) 
+
+# Create a binary variable to flag outliers
+df_clean <- df_clean %>%
+  mutate(
+    Is_Age_Outlier = ifelse(Edad < lower_bound |
+                              Edad > upper_bound, 1, 0))
+
+# Example: Robust linear model using MASS package
+library(MASS)
+
+colnames(lab03)
+
+# Check the structure of lab03 to see all column names and types
+str(lab03)
+
+# Look for any variations in the column name
+grep("Income", colnames(lab03), value = TRUE)
+
+# Rename the column to ensure there are no spaces
+lab03 <- lab03 %>%
+  rename(Total.Monthly.Household.Income = Total_Monthly_Household_Income) %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)),
+         Edad = as.numeric(as.character(Edad)))  # Ensure Edad is also numeric
+
+lab03 <- lab03 %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)))
+
+# Rename column to remove spaces for easier reference
+colnames(lab03) <- gsub(" ", "_", colnames(lab03))
+
+# Fit the robust linear model using the corrected column name
+robust_model <- rlm(
+  Total_Monthly_Household_Income ~ Edad, data = lab03)
+
+sum(is.na(lab03$Total_Monthly_Household_Income))  # Check for missing values in income
+sum(is.na(lab03$Edad))  # Check for missing values in Edad
+
+str(lab03$`Total Monthly Household Income`)
+str(lab03$Edad)
+
+lab03 <- lab03 %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)),
+         Edad = as.numeric(as.character(Edad)))  # Ensure Edad is also numeric
+
+install.packages("randomForest")
+
+library(randomForest)
+
+# Fit a random forest model using the corrected column names
+rf_model <- randomForest(Tota.Monthly.Household.Income ~ Edad + `Civil Status`, data = lab03)
+
+# Ensure columns are of the correct type
+lab03 <- lab03 %>%
+  mutate(
+    `Total Monthly Household Income` = as.numeric(as.character(`Total Monthly Household Income`)),
+    Edad = as.numeric(as.character(Edad)),
+    `Civil Status` = as.factor(`Civil Status`)  # Convert Civil Status to a factor
+  )
+
+# Display the current column names in lab03
+colnames(lab03)
+
+# Look for any variations in the column name
+grep("Total", colnames(lab03), value = TRUE)
+
+# Rename the column to ensure it has the correct name for future reference
+lab03 <- lab03 %>%
+  rename(Total.Monthly.Household.Income = `Total Monthly Household Income`)  # Change as necessary
+
+lab03 <- lab03 %>%
+  mutate(
+    Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)),
+    Edad = as.numeric(as.character(Edad)),
+    Civil.Status = as.factor(Civil.Status)  # Convert Civil Status to a factor
+  )
+
+# Fit a random forest model using the corrected column names
+rf_model <- randomForest(Total.Monthly.Household.Income ~ Edad + `Civil Status`, data = lab03)
+
+# Example: Clustering for outlier detection using dbscan package
+library(dbscan)
+db <- dbscan(df_clean[, c("Edad",
+                          "Total Monthly Household Income")], eps = 0.5, minPts = 5) 
+
+
+# Calculate Q1 and Q3
+Q1 <- quantile(lab03$Edad, 0.25, na.rm = TRUE)
+Q3 <- quantile(lab03$Edad, 0.75, na.rm = TRUE)
+
+# Calculate IQR
+IQR <- Q3 - Q1
+
+# Determine the lower and upper bounds
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Identify outliers
+outliers <- lab03$Edad[lab03$Edad < lower_bound | lab03$Edad > upper_bound]
+
+# Winsorize the 'Edad' column
+lab03 <- lab03 %>%
+  mutate(Edad = ifelse(Edad < lower_bound, lower_bound,
+                       ifelse(Edad > upper_bound, upper_bound, Edad)))
+
+# Apply log transformation to 'Total Monthly Household Income'
+lab03 <- lab03 %>%
+  mutate(Total_Monthly_Household_Income_Log = log(Total.Monthly.Household.Income + 1))  # Adding 1 to avoid log(0)
+
+# Creating a new variable for annual income based on monthly income
+df_clean <- df_clean %>%
+  mutate(Yearly_Income = Total.Monthly.Household.Income * 12)
+
+# Example: Binning the 'Edad' column into age groups
+df_clean <- df_clean %>%
+  mutate(
+    Age_Group = cut(Edad,
+                    breaks = c(0, 18, 30, 50, 100),
+                    labels = c("Youth", "Young Adult", "Adult", "Senior")))
+
+# Create a new feature by combining 'Edad' and 'Civil Status'
+df_clean <- df_clean %>%
+  mutate(Age_Status_Interaction = Edad * as.numeric(Civil.Status))
+
+# Min-Max scaling of the 'Total Monthly Household Income' column
+df_clean <- df_clean %>%
+  mutate(Normalized_Income = Total.Monthly.Household.Income - min(Total.Monthly.Household.Income, na.rm = TRUE) /
+           (max(Total.Monthly.Household.Income, na.rm = TRUE) - min(Total.Monthly.Household.Income, na.rm = TRUE)))
+
+# Z-score standardization of the 'Income' column
+df_clean <- df_clean %>%
+  mutate(Standardized_Income =
+           scale(Total.Monthly.Household.Income))
+
+# Robust scaling of the 'Income' column
+IQR_income <- IQR(df_clean$Total.Monthly.Household.Income,
+                  na.rm = TRUE)
+median_income <- median(df_clean$Total.Monthly.Household.Income,
+                        na.rm = TRUE)
+
+# Calculate median and IQR for the 'Total Monthly Household Income'
+median_income <- median(df_clean$`Total Monthly Household Income`, na.rm = TRUE)
+IQR_income <- IQR(df_clean$`Total Monthly Household Income`, na.rm = TRUE)
+
+# Perform robust scaling
+df_clean <- df_clean %>%
+  mutate(Robust_Scaled_Income = (Total.Monthly.Household.Income - median_income) / IQR_income)
+
+
+# Check if the income column exists and its data type
+str(df_clean$`Total Monthly Household Income`)
+
+# Count NA values in the income column
+sum(is.na(df_clean$Total.Monthly.Household.Income))
+
+df_clean <- df_clean %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(as.character(Total.Monthly.Household.Income)))
+
+# Recalculate median and IQR for the 'Total Monthly Household Income'
+median_income <- median(df_clean$`Total Monthly Household Income`, na.rm = TRUE)
+IQR_income <- IQR(df_clean$`Total Monthly Household Income`, na.rm = TRUE)
+
+# Print them to confirm they are valid numbers
+print(median_income)
+print(IQR_income)
+
+# Check if median or IQR are NA or if IQR is zero
+if (is.na(median_income) || is.na(IQR_income)) {
+  print("Median or IQR calculation resulted in NA; please check the income data.")
+} else if (IQR_income == 0) {
+  print("IQR is zero; all values are the same.")
+} else {
+  # Perform robust scaling if everything is valid
+  df_clean <- df_clean %>%
+    mutate(Robust_Scaled_Income = (`Total Monthly Household Income` - median_income) / IQR_income)
+}
+
+# Perform robust scaling
+df_clean <- df_clean %>%
+  mutate(Robust_Scaled_Income = (Total.Monthly.Household.Income - median_income) / IQR_income)
+
+# Log transformation of the 'Income' column
+df_clean <- df_clean %>%
+  mutate(Log_Income = log(Total.Monthly.Household.Income + 1))
+
+# Square root transformation of 'Income'
+df_clean <- df_clean %>%
+  mutate(Sqrt_Income = sqrt(Total.Monthly.Household.Income))
