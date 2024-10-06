@@ -1,0 +1,154 @@
+install.packages("dplyr")
+
+library(dplyr)
+
+Dataset <- read.csv(file.choose(), stringsAsFactors = FALSE)
+df <- Dataset
+
+lab03 <- df
+
+sum(is.na(lab03$Edad))
+
+lab03 %>%
+  filter(is.na(Edad))
+
+lab03 %>%
+  select(Edad, Total.Monthly.Household.Income) %>%
+  summarise_all(~ sum(is.na(.)))
+
+lab03 %>%
+  filter(is.na(Edad) | is.na(Total.Monthly.Household.Income))
+
+unique(lab03$Civil.Status)
+
+lab03 %>%
+  count(Civil.Status, sort = TRUE)
+
+df_clean <- na.omit(lab03)
+
+df_clean <- lab03 %>%
+  mutate(Edad = ifelse(is.na(Edad), mean(Edad, na.rm = TRUE), Edad))
+
+mode_civil_status <- lab03 %>%
+  count(Civil.Status) %>%
+  arrange(desc(n)) %>%
+  pull(Civil.Status)
+
+df_clean <- lab03 %>%
+  mutate(Civil.Status = ifelse(
+    is.na(Civil.Status), mode_civil_status, Civil.Status) )
+
+# Count the number of missing values in the 'Edad' column
+sum(is.na(lab03$Edad))
+
+# Filter rows where either 'Edad' or 'Total Monthly Household Income' has missing values
+lab03 %>%
+  filter(is.na(Edad) | is.na(Total.Monthly.Household.Income))
+
+# Find the most frequent value in Civil.Status
+mode_civil_status <- lab03 %>%
+  count(Civil.Status) %>%
+  arrange(desc(n)) %>%
+  pull(Civil.Status)
+
+# Impute missing Civil.Status with the mode
+df_clean <- lab03 %>%
+  mutate(Civil.Status = ifelse(is.na(Civil.Status), mode_civil_status, Civil.Status))
+
+# Check the structure of the dataset
+str(lab03)
+
+# View a summary of the data types and values
+summary(lab03)
+
+# Convert character to numeric
+df_clean <- lab03 %>%
+  mutate(
+    Total.Monthly.Household.Income = as.numeric(
+      gsub(",", "", Total.Monthly.Household.Income)) )
+
+# Convert character or numeric columns to factors
+df_clean <- df_clean %>%
+  mutate(
+    Civil.Status = as.factor(Civil.Status),
+    Home.Ownership.Status = as.factor(Home.Ownership.Status) )
+
+df_clean <- df_clean %>%
+  mutate(
+    Civil.Status = factor(Civil.Status, levels = c(1, 2, 3)) )
+
+# Example date
+df_clean <- df_clean %>%
+  mutate(Date_Time_Column = as.Date("2024-10-06", format = "%Y-%m-%d"))
+
+colnames(df_clean)
+
+df_clean <- df_clean %>%
+  mutate(Date_Time_Column = as.Date(Date_Time_Column, format = "%Y-%m-%d"))
+
+df_clean <- df_clean %>%
+  mutate(Date_Time_Column = as.POSIXct(Date_Time_Column, format = "%Y-%m-%d %H:%M:%S"))
+
+# Convert a character column to a Date format
+df_clean <- df_clean %>%
+  mutate(
+    Date_Time_Column = as.Date(Date_Time_Column, format = "%Y-%m-%d") ) 
+
+# Convert a character column to Date-Time format (POSIXct)
+df_clean <- df_clean %>%
+  mutate(
+    Date_Time_Column = as.POSIXct(
+      Date_Time_Column, format = "%Y-%m-%d %H:%M:%S") )
+
+# Convert Yes/No or 1/0 values to logical type
+df_clean <- df_clean %>%
+  mutate(
+    Is_Faculty_Club_Officer = ifelse(
+      Isa.ka.bang.Faculty.Club.Officer. == 1, TRUE, FALSE) )
+
+# Convert factor to numeric
+df_clean <- df_clean %>%
+  mutate(
+    Date_Time_Column = as.numeric(as.character(Date_Time_Column))
+  )
+
+# Check for conversion errors by checking for NA values
+# Count of NA values after conversion
+sum(is.na(df_clean$Date_Time_Column)) 
+
+# Optionally, revert problematic rows for investigation
+df_clean <- df_clean %>%
+  filter(is.na(Date_Time_Column))
+head(problematic_rows)
+
+# Example of ensuring consistent data types after reshaping
+df_pivoted <- df_clean %>%
+  group_by(Civil.Status) %>%
+  summarize(
+    avg_Income = mean(
+      as.numeric(Total.Monthly.Household.Income), na.rm = TRUE))
+
+# Ensure 'Civil Status' remains a factor after the operation
+df_pivoted$Civil.Status <- as.factor(df_pivoted$Civil.Status)
+
+# Ensure categorical variables are factors
+df_clean <- df_clean %>%
+  mutate(across(where(is.character), as.factor))
+
+# Use dummy encoding for categorical vars (if needed for modeling)
+library(caret)
+df_encoded <- dummyVars(" ~ .", data = df_clean) %>%
+  predict(df_clean)
+
+# Convert 'Total Monthly Household Income' from character to numeric
+df_clean <- df_clean %>%
+  mutate(Total.Monthly.Household.Income = as.numeric(gsub(",", "", Total.Monthly.Household.Income)))
+
+# Convert 'Civil Status' to a factor
+df_clean <- df_clean %>%
+  mutate(Civil.Status = as.factor(Civil.Status))
+
+# Convert a character column to POSIXct format (date-time)
+df_clean <- df_clean %>%
+  mutate(Date_Time_Column = as.POSIXct(Date_Time_Column, format = "%Y-%m-%d %H:%M:%S"))
+
